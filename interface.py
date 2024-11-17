@@ -4,7 +4,6 @@ import time
 import serial
 import struct
 
-# Define the states as constants for clarity
 STATES = {
     'IDLE': 0x00,
     'RUN_INFERENCE': 0x01,
@@ -18,13 +17,15 @@ def receive_images(image_count):
     global ser
     print(f"Receiving image {image_count}...")
     
-    # Read the header to get the start word and image size
-    header_size = 8  # 4 bytes for start word and 4 bytes for image size
+    header_size = 8 
     header_data = ser.read(header_size)
 
     if len(header_data) < header_size:
         print("Failed to read full header")
         return
+    else:
+        print("Received header, side : ", len(header_data))
+        print(header_data)
 
     start_word, img_size = struct.unpack(">II", header_data)
     
@@ -49,7 +50,6 @@ def receive_images(image_count):
                 image_file.write(image_data)
                 print(f"Image {image_count} received, total received {data_recv}/{img_size} bytes")
                 
-                time.sleep(0.1)  # Delay between receiving each image chunk
             except Exception as e:
                 print(f"Error receiving image: {e}")
                 break
@@ -61,25 +61,8 @@ def receive_images(image_count):
 
 def downlink():
     ser.write(b'\x03')
+    receive_images(0)        
     
-    log_data = ser.read(8192)
-    if log_data:
-        nb_imgs = 0
-        with open('log.txt', 'ab') as f:
-            f.write(log_data)
-            
-        with open('log.txt', 'rb') as f:
-            nb_imgs = len(f.readlines())
-            
-        print(f"Nb images acquired: {nb_imgs}")
-        time.sleep(1)
-        for i in range(nb_imgs):
-            receive_images(i)
-            time.sleep(2)
-        
-    else:
-        print("No data acquired")
-    time.sleep(1)
 
 def move_files_to_data_directory():
     data_directory = './data/'
@@ -97,10 +80,12 @@ def move_files_to_data_directory():
 
 if __name__ == "__main__":
     ser = serial.Serial('/dev/ttyUSB0', 115200)
+    ser.flushInput()  
+    ser.flushOutput() 
     ser.flush()
     ser.timeout = 5
     ser.write(b'\x01')
-    time.sleep(15)
+    time.sleep(2)
     ser.write(b'\x02')
     time.sleep(2)
     downlink()
